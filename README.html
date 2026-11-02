@@ -1,0 +1,61 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Документация MVP</title><style>body{font:17px/1.65 system-ui,sans-serif;max-width:1000px;margin:40px auto;padding:0 24px;color:#172b40;background:#f8fafc}h1,h2{line-height:1.25;color:#173b68}h2{margin-top:2em}p{overflow-wrap:anywhere}pre{background:#14263c;color:#edf5ff;padding:20px;border-radius:8px;overflow:auto;white-space:pre-wrap}a{color:#1454a0}header{border-bottom:2px solid #d8e3f0;padding-bottom:16px}</style><header>AI-помощник · Документация локального MVP</header><main><nav aria-label="Оглавление"><strong>Оглавление</strong><ul><li><a href="#section-0">MVP: AI-помощник для B2B-карточек</a></li><li><a href="#section-1">Статус</a></li><li><a href="#section-2">Требования и установка</a></li><li><a href="#section-3">Проверка без ключа и расходов</a></li><li><a href="#section-4">Настройка API</a></li><li><a href="#section-5">Генерация</a></li><li><a href="#section-6">Вход</a></li><li><a href="#section-7">Выход и статусы</a></li><li><a href="#section-8">Типовые проблемы</a></li><li><a href="#section-9">Документация</a></li></ul></nav><h1 id="section-0">MVP: AI-помощник для B2B-карточек</h1>
+<p>Локальная консольная программа принимает JSON прибора и обращается к Groq Chat Completions API. Возвращает SEO-заголовок, описание, характеристики, поисковые запросы, commercial-блок и предупреждения. Результат является черновиком для проверки человеком.</p>
+<h2 id="section-1">Статус</h2>
+<p>Основной CLI использует контракт 2.0: Groq выбирает идентификаторы допустимых блоков, сервис проверяет план и собирает текст из исходных данных. Все 27 тестов и два реальных прогона проверены. Готовые примеры: examples/outputs/product_01_selected.json/.md и product_02_selected.json/.md; сводная проверка — examples/outputs/SELECTED_REVIEW.md. Описания имеют 999 и 937 символов. Запуск без сторонних пакетов проверен в свежем локальном .venv. Публикация репозитория ещё не выполнена.</p>
+<p>История: свободная генерация 1.x была отклонена по фактам/длине, затем подготовлены отдельные локальные grounded-редакции. Они сохранены для разбора и не заменяют реальные selected-прогоны 2.0. Исходные товары — в examples/inputs; demo_synthetic.json остаётся синтетическим.</p>
+<h2 id="section-2">Требования и установка</h2>
+<p>Репозиторий проекта: https://github.com/S1N0N1001/ai-assistant-for-b2b-cards . Адрес предоставлен пользователем; статус первой публикации фиксируется в Step 16 MVP-service.md.</p>
+<p>После публикации получить код можно командами:</p>
+<pre><code>git clone https://github.com/S1N0N1001/ai-assistant-for-b2b-cards.git
+cd ai-assistant-for-b2b-cards</code></pre>
+<p>Python 3.12 или новее, доступ в интернет для генерации, ключ Groq и доступная вашему аккаунту текстовая модель с поддержкой JSON Object Mode. Текущая настройка — openai/gpt-oss-120b на Groq; доступ пользователя к модели подтверждён прежними запросами, новый контракт 2.0 ещё требует прогона. Сторонние Python-зависимости не нужны. Проверено на Python 3.12.14 под Windows.</p>
+<p>Получите папку проекта и откройте в ней терминал. Команды ниже используют python; если в Windows эта команда недоступна, используйте py -3.12 или полный путь к установленному интерпретатору.</p>
+<pre><code>python --version
+python -m venv .venv</code></pre>
+<p>Активация окружения не обязательна. На Windows вместо python можно использовать .\.venv\Scripts\python.exe; на Linux/macOS — .venv/bin/python. Установка через pip не требуется, запуск выполняется из корня проекта.</p>
+<h2 id="section-3">Проверка без ключа и расходов</h2>
+<pre><code>python -m service examples/inputs/demo_synthetic.json --validate-only
+python -m unittest discover -s tests -v</code></pre>
+<p>validate-only проверяет входные поля; он не проверяет качество генерации и не ищет смысловые противоречия. Тесты подменяют сетевой транспорт, не обращаются к API и не тратят средства.</p>
+<h2 id="section-4">Настройка API</h2>
+<p>Создайте ключ в https://console.groq.com/keys и задайте GROQ_API_KEY и GROQ_MODEL в локальном окружении. Ключ не отправляйте в чат, документацию или Git. .env.example — образец имён переменных; .env автоматически не читается.</p>
+<p>В PowerShell ключ можно ввести скрыто и перенести в окружение только текущего процесса:</p>
+<pre><code>$apiCredential = Get-Credential -UserName &#x27;api&#x27; -Message &#x27;Введите API-ключ в поле пароля&#x27;
+$env:GROQ_API_KEY = $apiCredential.GetNetworkCredential().Password
+$env:GROQ_MODEL = &#x27;openai/gpt-oss-120b&#x27;
+$env:LLM_TIMEOUT_SECONDS = &#x27;45&#x27;</code></pre>
+<p>На Linux/macOS задайте те же переменные средствами вашего менеджера секретов или оболочки. Значение модели по умолчанию в коде намеренно отсутствует. Входные данные передаются Groq; расходуются лимиты аккаунта, на платном тарифе возможны расходы. Используется фиксированный HTTPS endpoint https://api.groq.com/openai/v1/chat/completions с Bearer-авторизацией и response_format=json_object. JSON Object Mode не гарантирует соответствие нашей схеме: локальные проверки обязательны. Текущая совместимость с аккаунтом требует реального прогона.</p>
+<h2 id="section-5">Генерация</h2>
+<pre><code>python -m service examples/inputs/demo_synthetic.json --output output/demo-card.json</code></pre>
+<p>Сохраняются output/demo-card.json и output/demo-card.md. Для повторной генерации выберите новое имя: существующие файлы не перезаписываются. Не размещайте чувствительные данные в демонстрационных файлах.</p>
+<h2 id="section-6">Вход</h2>
+<p>JSON в UTF-8, объект с полями name, manufacturer, specs и description. specs — объект, имена характеристик непустые, значения — строки либо null. Полный пример структуры находится в examples/inputs/demo_synthetic.json.</p>
+<p>Минимум: непустое name и непустые технические сведения в specs или description. Пропуски перечисляются в missing_fields; неизвестные поля не используются. Числа в specs передавайте строками с единицами, например &quot;1 МПа&quot;. Лимит входа — 100 000 символов.</p>
+<h2 id="section-7">Выход и статусы</h2>
+<p>В режиме 2.0 модель управляет порядком всех характеристик, выбором одного из допустимых заголовков и 3–5 заранее сформированных запросов. Значения, описание с условиями применения и commercial-блок не пересказываются моделью. Результат содержит selection_plan, SHA-256 нормализованного входа, UTC-время и assembly_mode=llm_selection_source_template. Если модель дважды возвращает недопустимый план, выполнение завершается ошибкой без карточки. Локальная сборка не подменяет отсутствующий API-ответ.</p>
+<p>Объём шаблона не гарантируется для произвольного товара: короткие и длинные источники могут дать needs_revision. Входные противоречия и достоверность паспортных данных проверяются человеком. Для двух предоставленных входов длины проверены локально. Способ сборки прямо указан в метаданных и предупреждениях.</p>
+<p>seo_title — до 70 символов; seo_description — 800–1200 символов; search_queries — 3–5 разных запросов. Длина считается после обрезки пробелов по краям с внутренними пробелами и пунктуацией.</p>
+<p>characteristics переносится из specs с source, без генерации моделью. Если сведения даны только в description, они остаются в source_description и могут использоваться в тексте; автоматического извлечения в список характеристик пока нет.</p>
+<p>- needs_review: формальные проверки пройдены, требуется ручная сверка фактов.</p>
+<p>- needs_revision: нарушены требования или модель сообщила о конфликте; результат требует исправления.</p>
+<p>- Код завершения 0: проверка входа успешна или сохранён needs_review.</p>
+<p>- Код 2: ошибка ввода, конфигурации, API, структуры ответа или файлов.</p>
+<p>- Код 3: сохранён needs_revision.</p>
+<p>При ошибках плана возможен один запрос исправления. При временной ошибке API возможен один сетевой повтор каждого запроса. Верхняя граница — четыре HTTP-попытки на запуск. Успешный код завершения не означает подтверждённой достоверности исходных данных.</p>
+<h2 id="section-8">Типовые проблемы</h2>
+<p>- Не найден python: установите Python 3.12+ или укажите путь к нему.</p>
+<p>- Нет ключа/модели: задайте переменные окружения в том же терминале.</p>
+<p>- HTTP 401/403: проверьте ключ и права; 404 — имя модели; 429 — лимиты.</p>
+<p>- Таймаут: проверьте сеть; LLM_TIMEOUT_SECONDS допускает от 1 до 120.</p>
+<p>- Неверный JSON или тип: исправьте вход согласно схеме.</p>
+<p>- Выход уже существует: задайте другое имя после --output.</p>
+<p>- needs_revision: прочитайте warnings и conflicts, уточните данные; не публикуйте такой текст как готовую карточку.</p>
+<h2 id="section-9">Документация</h2>
+<p>- <a href="TECHNICAL_SPECIFICATION.md">ТЗ</a></p>
+<p>- <a href="STEPS.md">Индекс шагов</a></p>
+<p>- <a href="docs/PROMPTS_AND_DECISIONS.md">Промпты и решения</a></p>
+<p>- <a href="docs/LIMITATIONS_AND_IMPROVEMENTS.md">Ограничения и улучшения</a></p>
+<p>- <a href="docs/SUBMISSION.md">Готовность к сдаче</a></p>
+<p>- <a href="examples/GENERATION_NOTES.md">Заметки о примерах</a></p>
+<p>README.txt и README.html создаются из этого файла. Для обновления дополнительных форматов:</p>
+<pre><code>python scripts/export_docs.py</code></pre></main></html>

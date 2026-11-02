@@ -1,0 +1,6 @@
+[project]
+name = "mvp-product-service"
+version = "0.1.0"
+description = "Local B2B product draft generator"
+requires-python = ">=3.12"
+dependencies = []
